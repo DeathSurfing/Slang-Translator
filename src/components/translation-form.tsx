@@ -28,16 +28,13 @@ export function TranslationForm() {
   const [error, setError] = useState<string | null>(null);
   const [fromLang, setFromLang] = useState<string>(LANGUAGES[0]);
   const [toLang, setToLang] = useState<string>(LANGUAGES[1]);
-  const [result, setResult] = useState<{
-    translation: string;
-    context: string;
-  } | null>(null);
+  const [apiResponse, setApiResponse] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setResult(null);
+    setApiResponse(null);
 
     try {
       const response = await fetch('http://localhost:11434/api/generate', {
@@ -46,33 +43,27 @@ export function TranslationForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama2',
+          model: 'llama3.1:8b',
           prompt: `Translate the following slang or colloquial phrase from ${fromLang} to ${toLang}. Ensure you retain the slang's meaning and tone, providing necessary context.
 
-Phrase: "${input}"
+          Phrase: "${input}"
 
-Output format:
-1. Translated Phrase: [Provide translation]
-2. Context Explanation: [Describe the meaning and context]`,
+          Output format:
+          1. Translated Phrase: [Provide translation]
+          2. Context Explanation: [Describe the meaning and context]`,
           stream: false,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to connect to Ollama');
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const data = await response.json();
-      const parts = data.response.split('\n');
-      
-      const translation = parts[0].replace('1. Translated Phrase: ', '').trim();
-      const context = parts[1].replace('2. Context Explanation: ', '').trim();
-
-      setResult({ translation, context });
+      setApiResponse(data);
     } catch (error) {
-      console.error('Error:', error);
       setError(
-        error instanceof Error && error.message === 'Failed to fetch'
+        error instanceof Error && error.message.includes('Failed to fetch')
           ? 'Unable to connect to Ollama. Please make sure Ollama is running on your computer.'
           : 'An error occurred while translating. Please try again.'
       );
@@ -81,14 +72,26 @@ Output format:
     }
   };
 
+  const parseResponse = (responseText: string) => {
+    // Find the translated phrase
+    const translationMatch = responseText.match(/\*\*Translated Phrase:\*\*(.*?)(?=\n|$)/);
+    const translation = translationMatch ? translationMatch[1].trim() : null;
+
+    // Find the context explanation
+    const contextMatch = responseText.match(/\*\*Context Explanation:\*\*(.*?)(?=\n|$)/s);
+    const context = contextMatch ? contextMatch[1].trim() : null;
+
+    return {
+      translation: translation || 'Translation not found',
+      context: context || 'Context not found'
+    };
+  };
+
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex gap-4">
-          <Select
-            value={fromLang}
-            onValueChange={setFromLang}
-          >
+          <Select value={fromLang} onValueChange={setFromLang} disabled={loading}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="From" />
             </SelectTrigger>
@@ -101,10 +104,7 @@ Output format:
             </SelectContent>
           </Select>
 
-          <Select
-            value={toLang}
-            onValueChange={setToLang}
-          >
+          <Select value={toLang} onValueChange={setToLang} disabled={loading}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="To" />
             </SelectTrigger>
@@ -117,7 +117,7 @@ Output format:
             </SelectContent>
           </Select>
         </div>
-
+ 
         <Textarea
           placeholder="Enter your phrase here..."
           value={input}
@@ -147,16 +147,22 @@ Output format:
         </Alert>
       )}
 
-      {result && (
+      {apiResponse && (
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
               <h3 className="font-semibold mb-2">Translation</h3>
-              <p className="text-lg">{result.translation}</p>
+              <p className="text-lg">{parseResponse(apiResponse.response).translation}</p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Context</h3>
-              <p className="text-muted-foreground">{result.context}</p>
+              <p className="text-muted-foreground">{parseResponse(apiResponse.response).context}</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">API Details</h3>
+              <p className="text-muted-foreground">Model: {apiResponse.model}</p>
+              <p className="text-muted-foreground">Created: {new Date(apiResponse.created_at).toLocaleString()}</p>
+              <p className="text-muted-foreground">Processing time: {(apiResponse.total_duration / 1e9).toFixed(2)}s</p>
             </div>
           </CardContent>
         </Card>
@@ -164,3 +170,5 @@ Output format:
     </div>
   );
 }
+
+export default TranslationForm;
