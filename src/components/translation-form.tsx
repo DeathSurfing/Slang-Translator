@@ -43,7 +43,7 @@ export function TranslationForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama3.1:8b',
+          model: 'llama3.1:latest',
           prompt: `Translate the following slang or colloquial phrase from ${fromLang} to ${toLang}. Ensure you retain the slang's meaning and tone, providing necessary context.
 
           Phrase: "${input}"
