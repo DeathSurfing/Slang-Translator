@@ -22,12 +22,19 @@ const LANGUAGES = [
   'Boomer',
 ] as const;
 
+const MODELS = [
+  'llama3.1:latest',
+  'mistral:latest',
+  'falcon-40b',
+] as const;
+
 export function TranslationForm() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fromLang, setFromLang] = useState<string>(LANGUAGES[0]);
   const [toLang, setToLang] = useState<string>(LANGUAGES[1]);
+  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0]);
   const [apiResponse, setApiResponse] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,8 +50,8 @@ export function TranslationForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama3.1:latest',
-          prompt: `Translate the following slang or colloquial phrase from ${fromLang} to ${toLang}. Ensure you retain the slang's meaning and tone, providing necessary context.
+          model: selectedModel,
+          prompt: `Be Precise. You are very smart. Translate the following text or colloquial phrase from ${fromLang} to ${toLang}. Ensure you retain the slang's meaning and tone, providing necessary context.
 
           Phrase: "${input}"
 
@@ -73,17 +80,14 @@ export function TranslationForm() {
   };
 
   const parseResponse = (responseText: string) => {
-    // Find the translated phrase
     const translationMatch = responseText.match(/\*\*Translated Phrase:\*\*(.*?)(?=\n|$)/);
     const translation = translationMatch ? translationMatch[1].trim() : null;
-
-    // Find the context explanation
     const contextMatch = responseText.match(/\*\*Context Explanation:\*\*(.*?)(?=\n|$)/s);
     const context = contextMatch ? contextMatch[1].trim() : null;
 
     return {
       translation: translation || 'Translation not found',
-      context: context || 'Context not found'
+      context: context || 'Context not found',
     };
   };
 
@@ -117,13 +121,27 @@ export function TranslationForm() {
             </SelectContent>
           </Select>
         </div>
- 
+
+        <Select value={selectedModel} onValueChange={setSelectedModel} disabled={loading}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select AI Model" />
+          </SelectTrigger>
+          <SelectContent>
+            {MODELS.map((model) => (
+              <SelectItem key={model} value={model}>
+                {model}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Textarea
           placeholder="Enter your phrase here..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="min-h-[100px] resize-none"
         />
+
         <Button
           type="submit"
           className="w-full"
