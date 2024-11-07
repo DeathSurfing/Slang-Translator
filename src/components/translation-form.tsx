@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react'; // Ensure you have this library installed
 import {
   Select,
   SelectContent,
@@ -67,13 +67,21 @@ export function TranslationForm() {
       }
 
       const data = await response.json();
-      setApiResponse(data);
-    } catch (error) {
-      setError(
-        error instanceof Error && error.message.includes('Failed to fetch')
-          ? 'Unable to connect to Ollama. Please make sure Ollama is running on your computer.'
-          : 'An error occurred while translating. Please try again.'
-      );
+      if (data && data.response) {
+        setApiResponse(data);
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(
+          error.message.includes('Failed to fetch')
+            ? 'Unable to connect to Ollama. Please make sure Ollama is running on your computer.'
+            : error.message
+        );
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -165,7 +173,7 @@ export function TranslationForm() {
         </Alert>
       )}
 
-      {apiResponse && (
+      {apiResponse && apiResponse.response && (
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
@@ -174,13 +182,19 @@ export function TranslationForm() {
             </div>
             <div>
               <h3 className="font-semibold mb-2">Context</h3>
-              <p className="text-muted-foreground">{parseResponse(apiResponse.response).context}</p>
+              <p className="text-muted-foreground">
+                {parseResponse(apiResponse.response).context}
+              </p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">API Details</h3>
               <p className="text-muted-foreground">Model: {apiResponse.model}</p>
-              <p className="text-muted-foreground">Created: {new Date(apiResponse.created_at).toLocaleString()}</p>
-              <p className="text-muted-foreground">Processing time: {(apiResponse.total_duration / 1e9).toFixed(2)}s</p>
+              <p className="text-muted-foreground">
+                Created: {new Date(apiResponse.created_at).toLocaleString()}
+              </p>
+              <p className="text-muted-foreground">
+                Processing time: {(apiResponse.total_duration / 1e9).toFixed(2)}s
+              </p>
             </div>
           </CardContent>
         </Card>
