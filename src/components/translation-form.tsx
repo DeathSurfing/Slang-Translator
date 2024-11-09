@@ -24,6 +24,7 @@ const LANGUAGES = [
 
 const MODELS = [
   'llama3.1:latest',
+  'llama3.1:8b',
   'mistral:latest',
   'falcon-40b',
 ] as const;
